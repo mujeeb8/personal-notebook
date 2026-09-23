@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Papertrail Notebook</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { display: ['Georgia', 'serif'], sans: ['ui-sans-serif', 'system-ui'] }, colors: { ink: '#17211b', moss: '#4e684f', paper: '#f7f3ea', clay: '#bf6f4a' } } } }</script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.3/dist/purify.min.js"></script>
+  <style>
+    body { background: #f7f3ea; color: #17211b; }
+    .paper-grid { background-image: linear-gradient(#d9d5c9 1px, transparent 1px), linear-gradient(90deg, #d9d5c9 1px, transparent 1px); background-size: 28px 28px; }
+    .notebook-layout { grid-template-columns: minmax(0, 1fr); }
+    .notebook-workspace { display: contents; }
+    @media (min-width: 1024px) {
+      .notebook-layout { grid-template-columns: var(--sidebar-width, 290px) 8px var(--editor-width, minmax(320px, 1fr)) 8px minmax(280px, 1fr); height: calc(100vh - 77px); min-height: 0; overflow: hidden; }
+      #notebookLayout > aside, #notebookEditor, #notebookPreview { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+    }
+    .resize-handle { cursor: col-resize; touch-action: none; user-select: none; width: 8px; margin-left: -4px; margin-right: -4px; position: relative; z-index: 10; }
+    body.is-resizing-column, body.is-resizing-column * { cursor: col-resize !important; user-select: none !important; }
+    .mobile-only { display: none; }
+    @media (max-width: 1023px) {
+      body.mobile-drawer-open, body.mobile-preview-open { overflow: hidden; }
+      .mobile-only { display: inline-flex; }
+      #notebookLayout { position: relative; min-height: calc(100vh - 77px); }
+      #notebookLayout > aside { position: fixed; inset: 77px auto 0 0; z-index: 40; width: min(86vw, 340px); transform: translateX(-105%); transition: transform .22s ease; box-shadow: 12px 0 30px rgba(23, 33, 27, .12); }
+      body.mobile-drawer-open #notebookLayout > aside { transform: translateX(0); }
+      #notebookLayout::before { content: ''; position: fixed; inset: 77px 0 0; z-index: 30; background: rgba(23, 33, 27, .28); opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+      body.mobile-drawer-open #notebookLayout::before, body.mobile-preview-open #notebookLayout::before { opacity: 1; pointer-events: auto; }
+      #notebookEditor { min-height: calc(100vh - 77px); overflow-y: auto; }
+      #notebookPreview { position: fixed; inset: 77px 0 0 auto; z-index: 40; width: min(92vw, 620px); transform: translateX(105%); transition: transform .22s ease; background: #f7f3ea; box-shadow: -12px 0 30px rgba(23, 33, 27, .12); }
+      body.mobile-preview-open #notebookPreview { transform: translateX(0); }
+    }
+    .resize-handle::after { content: ''; position: absolute; inset: 0 3px; background: transparent; transition: background .15s ease; }
+    .resize-handle:hover::after, .resize-handle.is-resizing::after { background: #bf6f4a; }
+    .markdown h1, .markdown h2, .markdown h3 { font-family: Georgia, serif; margin: 1.2rem 0 .6rem; color: #17211b; }
+    .markdown h1 { font-size: 2rem; } .markdown h2 { font-size: 1.5rem; } .markdown h3 { font-size: 1.2rem; }
+    .markdown p { margin: .7rem 0; line-height: 1.7; } .markdown ul { list-style: disc; padding-left: 1.4rem; }
+    .markdown blockquote { border-left: 3px solid #bf6f4a; padding-left: 1rem; color: #667064; }
+    .markdown code { background: #e9e4d8; padding: .15rem .3rem; border-radius: .25rem; }
+    body.dark-theme { background: #18201b; color: #e8eee7; }
+    body.dark-theme #authView, body.dark-theme #appView { background: #18201b; }
+    body.dark-theme #authView section:last-child, body.dark-theme #notebookEditor, body.dark-theme #notebookPreview { background: #202a23; }
+    body.dark-theme #notebookLayout > aside { background: #1d2720; border-color: #3a493e; }
+    body.dark-theme header { background: #202a23; border-color: #3a493e; }
+    body.dark-theme input, body.dark-theme textarea { color: #e8eee7; border-color: #526456; }
+    body.dark-theme input::placeholder, body.dark-theme textarea::placeholder { color: #91a195; }
+    body.dark-theme .border-stone-300, body.dark-theme .border-\[\#ddd8cc\] { border-color: #3a493e; }
+    body.dark-theme .text-stone-500, body.dark-theme .text-stone-600, body.dark-theme .text-stone-400 { color: #a8b5aa; }
+    body.dark-theme .text-stone-700 { color: #d4ded5; }
+    body.dark-theme .bg-white, body.dark-theme .bg-\[\#fbf9f4\] { background: #2b382e; }
+    body.dark-theme .hover\:bg-white\/60:hover { background: #2b382e; }
+    body.dark-theme .markdown code { background: #344338; }
+    body.dark-theme .markdown h1, body.dark-theme .markdown h2, body.dark-theme .markdown h3 { color: #e8eee7; }
+    body.dark-theme .markdown blockquote { color: #a8b5aa; }
+    body.dark-theme #deletePrompt { background: rgba(0, 0, 0, .58); }
+    body.dark-theme #deletePrompt > div { background: #202a23; }
+  </style>
+</head>
+<body class="min-h-screen font-sans">
+  <main id="authView" class="relative min-h-screen grid lg:grid-cols-[1.05fr_.95fr]">
+    <button id="themeToggleAuth" class="absolute right-4 top-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-[#fbf9f4] text-lg text-ink shadow-sm hover:bg-[#f1eee6]" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">&#9790;</button>
+    <section class="hidden lg:flex paper-grid relative overflow-hidden p-16 flex-col justify-between bg-[#dfe7d8]">
+      <div class="relative z-10"><div class="text-xs uppercase tracking-[.25em] text-moss font-semibold">Papertrail</div><h1 class="font-display text-7xl leading-[.95] mt-10 max-w-xl">A quiet place for loud ideas.</h1></div>
+      <div class="relative z-10 max-w-sm text-moss/80"><p class="text-lg">Your notes stay yours, written in plain Markdown and ready to travel with you.</p><div class="mt-10 border-t border-moss/30 pt-4 text-xs uppercase tracking-widest">Private by design · Simple by nature</div></div>
+      <div class="absolute -right-24 top-24 w-80 h-80 rounded-full border-[40px] border-[#bf6f4a]/70"></div>
+    </section>
+    <section class="flex items-center justify-center p-6 sm:p-12">
+      <div class="w-full max-w-md">
+        <div class="lg:hidden text-xs uppercase tracking-[.25em] text-moss font-semibold mb-16">Papertrail Notebook</div>
+        <div id="authCard"></div>
+      </div>
+    </section>
+  </main>
+  <main id="appView" class="hidden min-h-screen">
+    <header class="border-b border-[#ddd8cc] bg-[#fbf9f4] px-4 sm:px-5 py-4 flex items-center justify-between gap-3"><div class="flex items-center gap-3"><button id="mobileMenuBtn" class="mobile-only items-center justify-center w-9 h-9 rounded-full text-xl text-ink hover:bg-[#f1eee6]" aria-label="Open notes" title="Open notes">&#9776;</button><div><div class="text-xs uppercase tracking-[.22em] text-moss font-semibold">Papertrail</div><div class="font-display text-xl">Personal notebook</div></div></div><div class="flex items-center gap-3"><button id="mobilePreviewBtn" class="mobile-only items-center justify-center w-9 h-9 rounded-full text-lg text-ink hover:bg-[#f1eee6]" aria-label="Open preview" title="Open preview">&#8599;</button><div id="syncStatus" class="hidden sm:flex items-center gap-2 text-xs text-stone-500" role="status" aria-live="polite"><span id="syncIcon" aria-hidden="true">&#9729;</span><span id="syncLabel">Saved to cloud</span></div><button id="themeToggle" class="flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-[#fbf9f4] text-lg text-ink hover:bg-[#f1eee6]" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">&#9790;</button><button id="logoutBtn" class="text-sm text-stone-500 hover:text-clay">Lock notebook</button></div></header>
+    <div id="notebookLayout" class="notebook-layout max-w-[1500px] mx-auto grid min-h-[calc(100vh-77px)]">
+      <aside class="border-r border-[#ddd8cc] p-5 bg-[#f1eee6]"><div class="flex items-center justify-between mb-5"><span class="text-xs uppercase tracking-widest text-stone-500">Notes</span><button id="newBtn" class="bg-ink text-white rounded-full w-9 h-9 text-xl leading-none hover:bg-moss" title="New note">+</button></div><div id="noteList" class="space-y-2"></div></aside>
+      <div id="sidebarResize" class="resize-handle hidden lg:block" title="Resize notes panel"></div>
+      <section id="notebookWorkspace" class="notebook-workspace min-w-0"><div id="notebookEditor" class="p-6 sm:p-10 border-b lg:border-b-0 lg:border-r border-[#ddd8cc]"><div class="flex items-center justify-between gap-4 mb-6"><input id="titleInput" class="bg-transparent font-display text-3xl sm:text-4xl outline-none min-w-0 w-full" placeholder="Untitled note"><button id="deleteBtn" class="hidden text-sm text-clay shrink-0">Delete</button></div><textarea id="contentInput" class="w-full min-h-[65vh] resize-none bg-transparent outline-none font-mono text-sm leading-7 text-stone-700" placeholder="# Start writing\n\nYour Markdown lives here..."></textarea><div class="text-xs text-stone-400 mt-4" id="saveStatus">Unsaved</div></div><div id="editorResize" class="resize-handle hidden lg:block" title="Resize editor panel"></div><div id="notebookPreview" class="p-6 sm:p-10 overflow-auto"><div class="text-xs uppercase tracking-widest text-stone-400 mb-7">Preview</div><article id="preview" class="markdown max-w-2xl"></article></div></section>
+    </div>
+  </main>
+  <div id="deletePrompt" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-6" role="dialog" aria-modal="true" aria-labelledby="deletePromptTitle">
+    <div class="w-full max-w-sm rounded-xl bg-[#fbf9f4] p-6 shadow-2xl">
+      <div class="text-xs uppercase tracking-widest text-clay">Confirm deletion</div>
+      <h2 id="deletePromptTitle" class="font-display text-2xl mt-2">Delete this note?</h2>
+      <p id="deletePromptMessage" class="text-sm text-stone-600 mt-3 leading-6"></p>
+      <div class="flex justify-end gap-3 mt-6">
+        <button id="cancelDeleteBtn" class="rounded-full border border-stone-300 px-4 py-2 text-sm text-stone-600 hover:bg-stone-100">Cancel</button>
+        <button id="confirmDeleteBtn" class="rounded-full bg-clay px-4 py-2 text-sm text-white hover:bg-ink">Delete note</button>
+      </div>
+    </div>
+  </div>
+  <script>window.NOTEBOOK_API_URL = window.location.port === "5500" ? "http://127.0.0.1:8000" : window.location.origin;</script>
+  <script src="app.js"></script>
+</body>
+</html>
