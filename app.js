@@ -1,4 +1,4 @@
-const API_BASE_URL = (window.NOTEBOOK_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+const API_BASE_URL = ('https://z4f4lxncw21e76z5kkq6nwnn.coolify.rim.qzz.io').replace(/\/$/, '');
 const state = { token: localStorage.getItem('papertrail_token'), notes: [], currentId: null, configured: false, syncDirty: false };
 const $ = (id) => document.getElementById(id);
 const DEFAULT_TITLE = 'Untitled note';
