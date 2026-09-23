@@ -25,6 +25,9 @@ DATABASE_NAME = os.getenv("DATABASE_NAME", "personal_notebook")
 SECRET_KEY = os.getenv("SECRET_KEY", "change-this-local-secret")
 TOKEN_TTL = 60 * 60 * 12
 FRONTEND_ORIGINS = [origin.strip() for origin in os.getenv("FRONTEND_ORIGINS", "http://127.0.0.1:5500,http://localhost:5500").split(",") if origin.strip()]
+STATIC_DIR = Path(__file__).parent / "static"
+if not STATIC_DIR.exists():
+    STATIC_DIR = Path(__file__).parent.parent / "static"
 
 app = FastAPI(title="Papertrail Notebook")
 app.add_middleware(
@@ -216,7 +219,7 @@ async def delete_note(note_id: str, db: AsyncIOMotorDatabase = Depends(require_a
 
 @app.get("/", include_in_schema=False)
 async def frontend() -> FileResponse:
-    return FileResponse(Path(__file__).parent / "static" / "index.html")
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -224,4 +227,4 @@ async def favicon() -> Response:
     return Response(status_code=204)
 
 
-app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="static")
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
