@@ -23,7 +23,8 @@ MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "personal_notebook")
 SECRET_KEY = os.getenv("SECRET_KEY", "change-this-local-secret")
 TOKEN_TTL = 60 * 60 * 12
-FRONTEND_ORIGINS = [origin.strip() for origin in os.getenv("FRONTEND_ORIGINS", "http://127.0.0.1:5500,http://localhost:5500").split(",") if origin.strip()]
+configured_origins = [origin.strip() for origin in os.getenv("FRONTEND_ORIGINS", "http://127.0.0.1:5500,http://localhost:5500").split(",") if origin.strip()]
+FRONTEND_ORIGINS = list(dict.fromkeys([*configured_origins, "https://mujeeb8.github.io"]))
 
 app = FastAPI(title="Papertrail Notebook")
 app.add_middleware(
