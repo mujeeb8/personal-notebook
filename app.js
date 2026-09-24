@@ -1,4 +1,4 @@
-const API_BASE_URL = ('https://z4f4lxncw21e76z5kkq6nwnn.coolify.rim.qzz.io').replace(/\/$/, '');
+const API_BASE_URL = ('https://personal-notebook-lxwz.onrender.com').replace(/\/$/, '');
 const state = { token: localStorage.getItem('papertrail_token'), notes: [], currentId: null, configured: false, syncDirty: false };
 const $ = (id) => document.getElementById(id);
 const DEFAULT_TITLE = 'Untitled note';
