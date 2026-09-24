@@ -12,7 +12,7 @@ from bson import ObjectId
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
@@ -28,6 +28,8 @@ FRONTEND_ORIGINS = [origin.strip() for origin in os.getenv("FRONTEND_ORIGINS", "
 STATIC_DIR = Path(__file__).parent / "static"
 if not STATIC_DIR.exists():
     STATIC_DIR = Path(__file__).parent.parent / "static"
+if not STATIC_DIR.exists():
+    STATIC_DIR = None
 
 app = FastAPI(title="Papertrail Notebook")
 app.add_middleware(
@@ -217,9 +219,16 @@ async def delete_note(note_id: str, db: AsyncIOMotorDatabase = Depends(require_a
     return {"deleted": True}
 
 
-@app.get("/", include_in_schema=False)
-async def frontend() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+if STATIC_DIR:
+    @app.get("/", include_in_schema=False)
+    async def frontend() -> FileResponse:
+        return FileResponse(STATIC_DIR / "index.html")
+
+
+else:
+    @app.get("/", include_in_schema=False)
+    async def api_status() -> JSONResponse:
+        return JSONResponse({"service": "personal-notebook", "status": "ok"})
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -227,4 +236,5 @@ async def favicon() -> Response:
     return Response(status_code=204)
 
 
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+if STATIC_DIR:
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
